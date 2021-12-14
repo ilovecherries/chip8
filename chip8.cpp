@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <memory>
+#include <cstdlib>
 
 // helper functions for getting values out of opcode instructions
 /**/
@@ -42,7 +43,10 @@ void SYS_Opcode::opcode(Chip8 &chip8, uint16_t ins)
     // 00E0 - CLS
     // Clear the display.
     case (0x00E0):
-        chip8.vram.fill(0);
+        for (auto &i : chip8.vram)
+        {
+            i.fill(false);
+        }
         break;
     // 00EE - RET
     // Return from a subroutine.
@@ -137,16 +141,63 @@ void REG_Opcode::opcode(Chip8 &chip8, uint16_t ins)
     }
     // SUB
     case 5:
-    {
-        int16_t result = *reg1 - *reg2;
-        *carry = result < 0 ? 1 : 0;
+        *carry = *reg1 > *reg2 ? 1 : 0;
         *reg1 -= *reg2;
         break;
-    }
+    // SHR
+    case 6:
+        *carry = *reg1 & 1;
+        *reg1 >>= 1;
+        break;
+    // SUBN
+    case 7:
+        *carry = *reg2 > *reg1 ? 1 : 0;
+        *reg1 -= *reg2;
+        break;
+    // SHL
+    case 0xE:
+        *carry = (*reg1 >> 8) & 1;
+        *reg1 <<= 1;
+        break;
     }
 }
 
-void PositionStack::set(uint16_t pos)
+void SNE_R_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+{
+    auto [reg1, reg2] = xy0(ins);
+    if (chip8.registers[reg1] != chip8.registers[reg2])
+    {
+        chip8.position.step();
+    }
+}
+
+void LD_NNN_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+{
+    chip8.i = nnn(ins);
+}
+
+void JMP_R_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+{
+    chip8.position.set(chip8.registers[0] + nnn(ins));
+}
+
+void RND_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+{
+    auto [reg, val] = xkk(ins);
+    uint8_t r = rand() % 256;
+    chip8.registers[reg] = val & r;
+}
+
+void DRW_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+{
+    // NOT IMPLEMENTED YET, THIS IS THE MOST ANNOYING OPCODE PROBABLY TO IMPLEMENT,
+    // PROBABLY JUST GRAPHICS IN GENERAL TBH LOL
+}
+
+void
+
+    void
+    PositionStack::set(uint16_t pos)
 {
     if ((pos < PRG_RAM_OFFSET) || (pos >= RAM_SIZE))
     {

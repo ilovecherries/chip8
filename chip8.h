@@ -63,7 +63,44 @@ public:
     void opcode(Chip8 &chip8, uint16_t ins);
 };
 
-constexpr std::size_t VRAM_SIZE = 32;
+class SNE_R_Opcode : public Opcode
+{
+public:
+    void opcode(Chip8 &chip8, uint16_t ins);
+};
+
+class LD_NNN_Opcode : public Opcode
+{
+public:
+    void opcode(Chip8 &chip8, uint16_t ins);
+};
+
+class JMP_R_Opcode : public Opcode
+{
+public:
+    void opcode(Chip8 &chip8, uint16_t ins);
+};
+
+class RND_Opcode : public Opcode
+{
+public:
+    void opcode(Chip8 &chip8, uint16_t ins);
+};
+
+class DRW_Opcode : public Opcode
+{
+public:
+    void opcode(Chip8 &chip8, uint16_t ins);
+};
+
+class SKP_K_Opcode : public Opcode
+{
+public:
+    void opcode(Chip8 &chip8, uint16_t ins);
+};
+
+constexpr std::size_t DISPLAY_WIDTH = 64;
+constexpr std::size_t DISPLAY_HEIGHT = 32;
 constexpr std::size_t STACK_SIZE = 16;
 constexpr std::size_t RAM_SIZE = 0xFFF;
 constexpr std::size_t PRG_RAM_OFFSET = 0x200;
@@ -88,6 +125,7 @@ class Chip8
 public:
     PositionStack position;
     std::array<uint8_t, REGISTER_COUNT> registers;
-    std::array<uint64_t, VRAM_SIZE> vram;
+    std::array<std::array<bool, DISPLAY_WIDTH>, DISPLAY_HEIGHT> vram;
     std::array<uint8_t, RAM_SIZE> ram;
+    uint16_t i;
 };
