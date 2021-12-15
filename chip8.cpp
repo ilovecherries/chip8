@@ -194,12 +194,18 @@ void DRW_Opcode::opcode(Chip8 &chip8, uint16_t ins)
     auto [reg_pos_x, reg_pos_y, bytes] = xyz(ins);
     auto x = chip8.registers[reg_pos_x];
     auto y = chip8.registers[reg_pos_y];
-    for (int i = 0; i < bytes; i++)
+    const auto length = sizeof(uint8_t);
+    for (uint8_t i = 0; i < bytes; i++)
     {
-        break;
+        auto byte = chip8.ram[chip8.i + i];
+        auto py = (y + i) % DISPLAY_HEIGHT;
+        for (uint8_t j = 0; j < length; j++)
+        {
+            auto px = (x + j) % DISPLAY_WIDTH;
+            auto bit = (byte >> (length - j)) & 1;
+            chip8.vram[py][px] ^= bit;
+        }
     }
-    // NOT IMPLEMENTED YET, THIS IS THE MOST ANNOYING OPCODE PROBABLY TO IMPLEMENT,
-    // PROBABLY JUST GRAPHICS IN GENERAL TBH LOL
 }
 
 void SKP_K_Opcode::opcode(Chip8 &chip8, uint16_t ins)
@@ -307,6 +313,24 @@ void PositionStack::step()
 
 Chip8::Chip8()
 {
+    // initialize the opcodes
+    // THIS IS THE WORST THING IVE EVER DONE HOLY SHIT
+    opcodes[0x0] = std::make_unique<Opcode>(SYS_Opcode());
+    opcodes[0x1] = std::make_unique<Opcode>(JMP_Opcode());
+    opcodes[0x2] = std::make_unique<Opcode>(CALL_Opcode());
+    opcodes[0x3] = std::make_unique<Opcode>(SE_Opcode());
+    opcodes[0x4] = std::make_unique<Opcode>(SNE_Opcode());
+    opcodes[0x5] = std::make_unique<Opcode>(SE_R_Opcode());
+    opcodes[0x6] = std::make_unique<Opcode>(LD_Opcode());
+    opcodes[0x7] = std::make_unique<Opcode>(ADD_Opcode());
+    opcodes[0x8] = std::make_unique<Opcode>(REG_Opcode());
+    opcodes[0x9] = std::make_unique<Opcode>(SNE_R_Opcode());
+    opcodes[0xA] = std::make_unique<Opcode>(LD_NNN_Opcode());
+    opcodes[0xB] = std::make_unique<Opcode>(JMP_R_Opcode());
+    opcodes[0xC] = std::make_unique<Opcode>(RND_Opcode());
+    opcodes[0xD] = std::make_unique<Opcode>(DRW_Opcode());
+    opcodes[0xE] = std::make_unique<Opcode>(SKP_K_Opcode());
+    opcodes[0xF] = std::make_unique<Opcode>(LD_T_Opcode());
     // we need to initialize the RAM with numbers
     for (int i = 0; i < CHIP8_NUMBERS.size(); i++)
     {

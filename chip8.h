@@ -1,3 +1,5 @@
+#pragma once
+
 #include <array>
 #include <vector>
 #include <cstdint>
@@ -115,6 +117,7 @@ constexpr std::size_t REGISTER_COUNT = 16;
 constexpr uint16_t POS_STEP = 2;
 constexpr std::size_t KEYBOARD_SIZE = 16;
 constexpr std::size_t DIGIT_SIZE = 5;
+constexpr std::size_t OPCODES = 16;
 
 constexpr std::array<std::array<uint8_t, DIGIT_SIZE>, 16> CHIP8_NUMBERS = {
     {// 0
@@ -173,6 +176,7 @@ public:
     Chip8Display vram;
     std::array<uint8_t, RAM_SIZE> ram;
     std::array<bool, KEYBOARD_SIZE> keyboard;
+    std::array<std::unique_ptr<Opcode>, OPCODES> opcodes;
     // delta timer
     uint8_t dt;
     // sound timer
