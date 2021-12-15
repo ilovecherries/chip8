@@ -190,14 +190,81 @@ void RND_Opcode::opcode(Chip8 &chip8, uint16_t ins)
 
 void DRW_Opcode::opcode(Chip8 &chip8, uint16_t ins)
 {
+    auto [reg_pos_x, reg_pos_y, bytes] = xyz(ins);
+    auto x = chip8.registers[reg_pos_x];
+    auto y = chip8.registers[reg_pos_y];
+    for (int i = 0; i < bytes; i++)
+    {
+        break;
+    }
     // NOT IMPLEMENTED YET, THIS IS THE MOST ANNOYING OPCODE PROBABLY TO IMPLEMENT,
     // PROBABLY JUST GRAPHICS IN GENERAL TBH LOL
 }
 
-void
+void SKP_K_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+{
+    auto [reg_pos, i] = xkk(ins);
+    auto reg = std::make_unique<uint8_t>(chip8.registers[reg_pos]);
+    switch (i)
+    {
+    case 0x9E:
+        if (chip8.keyboard[*reg])
+            chip8.position.step();
+        break;
+    case 0xA1:
+        if (!chip8.keyboard[*reg])
+            chip8.position.step();
+        break;
+    }
+}
 
-    void
-    PositionStack::set(uint16_t pos)
+void LD_T_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+{
+    auto [reg_pos, i] = xkk(ins);
+    auto reg = std::make_unique<uint8_t>(chip8.registers[reg_pos]);
+    switch (i)
+    {
+    case 0x07:
+        *reg = chip8.dt;
+        break;
+    // aaaa ok i will need to create a special state for this...
+    case 0x0A:
+        break;
+    case 0x15:
+        chip8.dt = *reg;
+        break;
+    case 0x18:
+        chip8.st = *reg;
+        break;
+    case 0x1E:
+        chip8.i += *reg;
+        break;
+    case 0x29:
+        // TODO: need to implement the numbers i suppose...
+        break;
+    case 0x33:
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t val = (*reg >> (8 - 4 * i)) & 1;
+            chip8.ram[chip8.i + i] = val;
+        }
+        break;
+    case 0x55:
+        for (int i = 0; i <= reg_pos; i++)
+        {
+            chip8.ram[chip8.i + i] = chip8.registers[i];
+        }
+        break;
+    case 0x65:
+        for (int i = 0; i <= reg_pos; i++)
+        {
+            chip8.registers[i] = chip8.ram[chip8.i + i];
+        }
+        break;
+    }
+}
+
+void PositionStack::set(uint16_t pos)
 {
     if ((pos < PRG_RAM_OFFSET) || (pos >= RAM_SIZE))
     {
@@ -235,4 +302,28 @@ uint16_t PositionStack::pop()
 void PositionStack::step()
 {
     this->set(this->get() + POS_STEP);
+}
+
+Chip8::Chip8()
+{
+    // we need to initialize the RAM with numbers
+    for (int i = 0; i < CHIP8_NUMBERS.size(); i++)
+    {
+        size_t offset = DIGIT_SIZE * i;
+        for (int j = 0; j < DIGIT_SIZE; j++)
+        {
+            ram[offset + j] = CHIP8_NUMBERS[i][j];
+        }
+    }
+    for (auto &i : vram)
+    {
+        i.fill(false);
+    }
+}
+
+void Chip8::cycle()
+{
+    uint16_t ins = (ram[position.get()] << 8) &
+                   ram[position.get() + 1];
+    uint8_t mask = (ram[position.get()] >> 4) & 0xF;
 }
