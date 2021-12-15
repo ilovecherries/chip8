@@ -1,4 +1,5 @@
 #include <array>
+#include <vector>
 #include <cstdint>
 
 class Chip8;
@@ -180,4 +181,5 @@ public:
 
     Chip8();
     void cycle();
+    void load(std::vector<uint8_t> &);
 };

@@ -1,5 +1,7 @@
 #include <iostream>
 #include <memory>
+#include <iterator>
+#include <fstream>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -88,6 +90,11 @@ public:
 
 int main(int argc, char *argv[])
 {
+    if (argc != 2)
+    {
+        std::cout << "chip8 [filename]" << std::endl;
+        return 0;
+    }
     auto game = Game();
     auto chip8 = Chip8();
     // this is an example for drawing to the vram i suppose
@@ -95,9 +102,16 @@ int main(int argc, char *argv[])
     {
         chip8.vram[i][i] = true;
     }
+    // load the test file
+    std::fstream is(argv[1]);
+    std::istream_iterator<uint8_t> start(is), end;
+    std::vector<uint8_t> file(start, end);
+    chip8.load(file);
+    // we should load the example file i guess
     while (game.processEvent())
     {
         std::cout << "Hello, World!" << std::endl;
+        chip8.cycle();
         game.renderVram(chip8.vram);
         game.redraw();
     }

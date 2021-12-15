@@ -3,6 +3,7 @@
 #include <tuple>
 #include <memory>
 #include <cstdlib>
+#include <fmt/format.h>
 
 // helper functions for getting values out of opcode instructions
 /**/
@@ -319,11 +320,25 @@ Chip8::Chip8()
     {
         i.fill(false);
     }
+    position.set(PRG_RAM_OFFSET);
 }
 
 void Chip8::cycle()
 {
-    uint16_t ins = (ram[position.get()] << 8) &
+    uint16_t ins = (ram[position.get()] << 8) |
                    ram[position.get() + 1];
     uint8_t mask = (ram[position.get()] >> 4) & 0xF;
+    fmt::print("MASK: {}\n", mask);
+    fmt::print("INSTRUCTION: {}\n", ins);
+    fmt::print("INSTRUCTION 1: {}\n", ram[position.get() + 1]);
+}
+
+void Chip8::load(std::vector<uint8_t> &program)
+{
+    if (program.size() > (RAM_SIZE - PRG_RAM_OFFSET))
+        throw std::runtime_error("Loaded program is too large to fit in memory");
+    for (int i = 0; i < program.size(); i++)
+    {
+        ram[PRG_RAM_OFFSET + i] = program[i];
+    }
 }
