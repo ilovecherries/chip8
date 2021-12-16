@@ -1,16 +1,25 @@
-#include <iostream>
 #include <memory>
 #include <iterator>
 #include <fstream>
+#include <vector>
+#include <chrono>
+#include <fmt/format.h>
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
 #include "chip8.h"
 
-constexpr int ZOOM = 16;
+constexpr int ZOOM = 4;
 
 int grp[DISPLAY_HEIGHT * ZOOM][DISPLAY_WIDTH * ZOOM];
+
+using namespace std::chrono;
+
+uint64_t getMillis()
+{
+    return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
 
 class Game
 {
@@ -24,6 +33,7 @@ public:
         D = XOpenDisplay(NULL);
         auto visual = DefaultVisual(D, 0);
         win = XCreateSimpleWindow(D, RootWindow(D, 0), 0, 0, DISPLAY_WIDTH * ZOOM, DISPLAY_HEIGHT * ZOOM, 1, 0, 0);
+        XSelectInput(D, win, ExposureMask | KeyPressMask | KeyReleaseMask);
         XStoreName(D, win, "CHIP-8 Interpreter");
         XMapWindow(D, win);
         image = XCreateImage(D, visual, 24, ZPixmap, 0, (char *)grp, DISPLAY_WIDTH * ZOOM, DISPLAY_HEIGHT * ZOOM, 32, 0);
@@ -53,7 +63,7 @@ public:
         }
     }
 
-    bool processEvent()
+    bool processEvent(Chip8 &chip8)
     {
         while (1)
         {
@@ -73,45 +83,141 @@ public:
             case Expose:
                 redraw();
                 break;
-                // case ButtonPress:;
-                //     click(ev.button.x, ev.button.y);
-                // case KeyPress:;
-                //     KeySym key = XLookupKeysym(&ev.key, 0);
-                //     if (!key)
-                //         break;
-                //     if (key == XK_space)
-                //     {
-                //         space();
-                //     }
+            // case ButtonPress:;
+            //     click(ev.button.x, ev.button.y);
+            case KeyPress:;
+                {
+                    KeySym key = XLookupKeysym(&ev.key, 0);
+                    if (!key)
+                        break;
+                    switch (key)
+                    {
+                    case XK_1:
+                        chip8.keyboard[1] = true;
+                        break;
+                    case XK_2:
+                        chip8.keyboard[2] = true;
+                        break;
+                    case XK_3:
+                        chip8.keyboard[3] = true;
+                        break;
+                    case XK_4:
+                        chip8.keyboard[0xC] = true;
+                        break;
+                    case XK_q:
+                        chip8.keyboard[4] = true;
+                        break;
+                    case XK_w:
+                        chip8.keyboard[5] = true;
+                        break;
+                    case XK_e:
+                        chip8.keyboard[6] = true;
+                        break;
+                    case XK_r:
+                        chip8.keyboard[0xD] = true;
+                        break;
+                    case XK_a:
+                        chip8.keyboard[7] = true;
+                        break;
+                    case XK_s:
+                        chip8.keyboard[8] = true;
+                        break;
+                    case XK_d:
+                        chip8.keyboard[9] = true;
+                        break;
+                    case XK_f:
+                        chip8.keyboard[0xE] = true;
+                        break;
+                    case XK_z:
+                        chip8.keyboard[0xA] = true;
+                        break;
+                    case XK_x:
+                        chip8.keyboard[0] = true;
+                        break;
+                    case XK_c:
+                        chip8.keyboard[0xB] = true;
+                        break;
+                    case XK_v:
+                        chip8.keyboard[0xF] = true;
+                        break;
+                    }
+                    break;
+                }
+            case KeyRelease:;
+                {
+                    KeySym key = XLookupKeysym(&ev.key, 0);
+                    if (!key)
+                        break;
+                    switch (key)
+                    {
+                    case XK_1:
+                        chip8.keyboard[1] = false;
+                        break;
+                    case XK_2:
+                        chip8.keyboard[2] = false;
+                        break;
+                    case XK_3:
+                        chip8.keyboard[3] = false;
+                        break;
+                    case XK_4:
+                        chip8.keyboard[0xC] = false;
+                        break;
+                    case XK_q:
+                        chip8.keyboard[4] = false;
+                        break;
+                    case XK_w:
+                        chip8.keyboard[5] = false;
+                        break;
+                    case XK_e:
+                        chip8.keyboard[6] = false;
+                        break;
+                    case XK_r:
+                        chip8.keyboard[0xD] = false;
+                        break;
+                    case XK_a:
+                        chip8.keyboard[7] = false;
+                        break;
+                    case XK_s:
+                        chip8.keyboard[8] = false;
+                        break;
+                    case XK_d:
+                        chip8.keyboard[9] = false;
+                        break;
+                    case XK_f:
+                        chip8.keyboard[0xE] = false;
+                        break;
+                    case XK_z:
+                        chip8.keyboard[0xA] = false;
+                        break;
+                    case XK_x:
+                        chip8.keyboard[0] = false;
+                        break;
+                    case XK_c:
+                        chip8.keyboard[0xB] = false;
+                        break;
+                    case XK_v:
+                        chip8.keyboard[0xF] = false;
+                        break;
+                    }
+                }
             }
         }
     }
 };
 
-int main(int argc, char *argv[])
+int main()
 {
-    if (argc != 2)
-    {
-        std::cout << "chip8 [filename]" << std::endl;
-        return 0;
-    }
     auto game = Game();
     auto chip8 = Chip8();
-    // this is an example for drawing to the vram i suppose
-    for (int i = 0; i < DISPLAY_HEIGHT; i++)
-    {
-        chip8.vram[i][i] = true;
-    }
     // load the test file
-    std::fstream is(argv[1]);
-    std::istream_iterator<uint8_t> start(is), end;
-    std::vector<uint8_t> file(start, end);
-    chip8.load(file);
+    std::ifstream infile("./tetris.rom", std::ios_base::binary);
+    std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(infile), {});
+    chip8.load(buffer);
     // we should load the example file i guess
-    while (game.processEvent())
+    while (game.processEvent(chip8))
     {
-        std::cout << "Hello, World!" << std::endl;
         chip8.cycle();
+        chip8.timer(getMillis());
         game.renderVram(chip8.vram);
         game.redraw();
     }

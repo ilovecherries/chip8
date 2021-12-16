@@ -3,7 +3,6 @@
 #include <tuple>
 #include <memory>
 #include <cstdlib>
-#include <fmt/format.h>
 
 // helper functions for getting values out of opcode instructions
 /**/
@@ -14,30 +13,30 @@ uint16_t nnn(uint16_t ins)
 
 std::tuple<uint8_t, uint8_t> xkk(uint16_t ins)
 {
-    uint8_t x = (ins & 0xF00) >> 8;
+    uint8_t x = (ins >> 8) & 0xF;
     uint8_t kk = ins & 0xFF;
     return std::make_tuple(x, kk);
 }
 
 std::tuple<uint8_t, uint8_t> xy0(uint16_t ins)
 {
-    uint8_t x = (ins & 0xF00) >> 8;
-    uint8_t y = (ins & 0xF0) >> 4;
+    uint8_t x = (ins >> 8) & 0xF;
+    uint8_t y = (ins >> 4) & 0xF;
     return std::make_tuple(x, y);
 }
 
 std::tuple<uint8_t, uint8_t, uint8_t> xyz(uint16_t ins)
 {
-    uint8_t x = (ins & 0xF00) >> 8;
-    uint8_t y = (ins & 0xF0) >> 4;
-    uint8_t z = (ins & 0xF0) >> 4;
+    uint8_t x = (ins >> 8) & 0xF;
+    uint8_t y = (ins >> 4) & 0xF;
+    uint8_t z = ins & 0xF;
     return std::make_tuple(x, y, z);
 }
 /**/
 
 // These are where the real opcodes begin:
 
-void SYS_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void SYS_opcode(Chip8 &chip8, uint16_t ins)
 {
     switch (ins)
     {
@@ -57,19 +56,21 @@ void SYS_Opcode::opcode(Chip8 &chip8, uint16_t ins)
     }
 }
 
-void JMP_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void JMP_opcode(Chip8 &chip8, uint16_t ins)
 {
     uint16_t location = nnn(ins);
     chip8.position.set(location);
+    chip8.position.back();
 }
 
-void CALL_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void CALL_opcode(Chip8 &chip8, uint16_t ins)
 {
     uint16_t location = nnn(ins);
     chip8.position.push(location);
+    chip8.position.back();
 }
 
-void SE_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void SE_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg, val] = xkk(ins);
     if (chip8.registers[reg] == val)
@@ -78,7 +79,7 @@ void SE_Opcode::opcode(Chip8 &chip8, uint16_t ins)
     }
 }
 
-void SNE_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void SNE_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg, val] = xkk(ins);
     if (chip8.registers[reg] != val)
@@ -87,7 +88,7 @@ void SNE_Opcode::opcode(Chip8 &chip8, uint16_t ins)
     }
 }
 
-void SE_R_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void SE_R_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg1, reg2] = xy0(ins);
     if (chip8.registers[reg1] == chip8.registers[reg2])
@@ -96,74 +97,74 @@ void SE_R_Opcode::opcode(Chip8 &chip8, uint16_t ins)
     }
 }
 
-void LD_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void LD_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg, val] = xkk(ins);
     chip8.registers[reg] = val;
 }
 
-void ADD_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void ADD_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg, val] = xkk(ins);
     chip8.registers[reg] += val;
 }
 
-void REG_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void REG_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg1_pos, reg2_pos, i] = xyz(ins);
-    auto reg1 = std::make_unique<uint8_t>(chip8.registers[reg1_pos]);
-    auto reg2 = std::make_unique<uint8_t>(chip8.registers[reg2_pos]);
-    auto carry = std::make_unique<uint8_t>(chip8.registers[0xF]);
+    auto &reg1 = chip8.registers[reg1_pos];
+    auto &reg2 = chip8.registers[reg2_pos];
+    auto &carry = chip8.registers[0xF];
     switch (i)
     {
     // LD
     case 0:
-        *reg1 = *reg2;
+        reg1 = reg2;
         break;
     // OR
     case 1:
-        *reg1 |= *reg2;
+        reg1 |= reg2;
         break;
     // AND
     case 2:
-        *reg1 &= *reg2;
+        reg1 &= reg2;
         break;
     // XOR
     case 3:
-        *reg1 ^= *reg2;
+        reg1 ^= reg2;
         break;
     // ADD
     case 4:
     {
-        uint16_t result = *reg1 + *reg2;
-        *carry = result > UINT8_MAX ? 1 : 0;
-        *reg1 += *reg2;
+        uint16_t result = reg1 + reg2;
+        carry = result > UINT8_MAX ? 1 : 0;
+        reg1 += reg2;
         break;
     }
     // SUB
     case 5:
-        *carry = *reg1 > *reg2 ? 1 : 0;
-        *reg1 -= *reg2;
+        carry = reg1 > reg2 ? 1 : 0;
+        reg1 -= reg2;
         break;
     // SHR
     case 6:
-        *carry = *reg1 & 1;
-        *reg1 >>= 1;
+        carry = reg1 & 1;
+        reg1 >>= 1;
         break;
     // SUBN
     case 7:
-        *carry = *reg2 > *reg1 ? 1 : 0;
-        *reg1 -= *reg2;
+        carry = reg2 > reg1 ? 1 : 0;
+        reg1 -= reg2;
         break;
     // SHL
     case 0xE:
-        *carry = (*reg1 >> 8) & 1;
-        *reg1 <<= 1;
+        carry = (reg1 >> 8) & 1;
+        reg1 <<= 1;
         break;
     }
 }
 
-void SNE_R_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void SNE_R_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg1, reg2] = xy0(ins);
     if (chip8.registers[reg1] != chip8.registers[reg2])
@@ -172,89 +173,88 @@ void SNE_R_Opcode::opcode(Chip8 &chip8, uint16_t ins)
     }
 }
 
-void LD_NNN_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void LD_NNN_opcode(Chip8 &chip8, uint16_t ins)
 {
     chip8.i = nnn(ins);
 }
 
-void JMP_R_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void JMP_R_opcode(Chip8 &chip8, uint16_t ins)
 {
     chip8.position.set(chip8.registers[0] + nnn(ins));
 }
 
-void RND_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void RND_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg, val] = xkk(ins);
     uint8_t r = rand() % 256;
     chip8.registers[reg] = val & r;
 }
 
-void DRW_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void DRW_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg_pos_x, reg_pos_y, bytes] = xyz(ins);
     auto x = chip8.registers[reg_pos_x];
     auto y = chip8.registers[reg_pos_y];
-    const auto length = sizeof(uint8_t);
+    chip8.registers[0xF] = 0;
     for (uint8_t i = 0; i < bytes; i++)
     {
         auto byte = chip8.ram[chip8.i + i];
         auto py = (y + i) % DISPLAY_HEIGHT;
-        for (uint8_t j = 0; j < length; j++)
+        for (int8_t j = 7; j >= 0; j--)
         {
-            auto px = (x + j) % DISPLAY_WIDTH;
-            auto bit = (byte >> (length - j)) & 1;
+            auto px = (x + 7 - j) % DISPLAY_WIDTH;
+            auto bit = (byte >> j) & 1;
+            chip8.registers[0xF] |= bit & chip8.vram[py][px];
             chip8.vram[py][px] ^= bit;
         }
     }
 }
 
-void SKP_K_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void SKP_K_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg_pos, i] = xkk(ins);
-    auto reg = std::make_unique<uint8_t>(chip8.registers[reg_pos]);
+    auto &reg = chip8.registers[reg_pos];
     switch (i)
     {
     case 0x9E:
-        if (chip8.keyboard[*reg])
+        if (chip8.keyboard[reg])
             chip8.position.step();
         break;
     case 0xA1:
-        if (!chip8.keyboard[*reg])
+        if (!chip8.keyboard[reg])
             chip8.position.step();
         break;
     }
 }
 
-void LD_T_Opcode::opcode(Chip8 &chip8, uint16_t ins)
+void LD_T_opcode(Chip8 &chip8, uint16_t ins)
 {
     auto [reg_pos, i] = xkk(ins);
-    auto reg = std::make_unique<uint8_t>(chip8.registers[reg_pos]);
+    auto &reg = chip8.registers[reg_pos];
     switch (i)
     {
     case 0x07:
-        *reg = chip8.dt;
+        reg = chip8.dt;
         break;
     // aaaa ok i will need to create a special state for this...
     case 0x0A:
         break;
     case 0x15:
-        chip8.dt = *reg;
+        chip8.dt = reg;
         break;
     case 0x18:
-        chip8.st = *reg;
+        chip8.st = reg;
         break;
     case 0x1E:
-        chip8.i += *reg;
+        chip8.i += reg;
         break;
     case 0x29:
-        // TODO: need to implement the numbers i suppose...
+        chip8.i = reg * DIGIT_SIZE;
         break;
     case 0x33:
-        for (int i = 0; i < 3; i++)
-        {
-            uint8_t val = (*reg >> (8 - 4 * i)) & 1;
-            chip8.ram[chip8.i + i] = val;
-        }
+        chip8.ram[chip8.i] = (reg / 100) % 10;
+        chip8.ram[chip8.i + 1] = (reg / 10) % 10;
+        chip8.ram[chip8.i + 2] = reg % 10;
         break;
     case 0x55:
         for (int i = 0; i <= reg_pos; i++)
@@ -311,26 +311,16 @@ void PositionStack::step()
     this->set(this->get() + POS_STEP);
 }
 
+void PositionStack::back()
+{
+    this->set(this->get() - POS_STEP);
+}
+
 Chip8::Chip8()
 {
-    // initialize the opcodes
-    // THIS IS THE WORST THING IVE EVER DONE HOLY SHIT
-    opcodes[0x0] = std::make_unique<Opcode>(SYS_Opcode());
-    opcodes[0x1] = std::make_unique<Opcode>(JMP_Opcode());
-    opcodes[0x2] = std::make_unique<Opcode>(CALL_Opcode());
-    opcodes[0x3] = std::make_unique<Opcode>(SE_Opcode());
-    opcodes[0x4] = std::make_unique<Opcode>(SNE_Opcode());
-    opcodes[0x5] = std::make_unique<Opcode>(SE_R_Opcode());
-    opcodes[0x6] = std::make_unique<Opcode>(LD_Opcode());
-    opcodes[0x7] = std::make_unique<Opcode>(ADD_Opcode());
-    opcodes[0x8] = std::make_unique<Opcode>(REG_Opcode());
-    opcodes[0x9] = std::make_unique<Opcode>(SNE_R_Opcode());
-    opcodes[0xA] = std::make_unique<Opcode>(LD_NNN_Opcode());
-    opcodes[0xB] = std::make_unique<Opcode>(JMP_R_Opcode());
-    opcodes[0xC] = std::make_unique<Opcode>(RND_Opcode());
-    opcodes[0xD] = std::make_unique<Opcode>(DRW_Opcode());
-    opcodes[0xE] = std::make_unique<Opcode>(SKP_K_Opcode());
-    opcodes[0xF] = std::make_unique<Opcode>(LD_T_Opcode());
+    ram.fill(0);
+    registers.fill(0);
+    keyboard.fill(false);
     // we need to initialize the RAM with numbers
     for (int i = 0; i < CHIP8_NUMBERS.size(); i++)
     {
@@ -349,12 +339,70 @@ Chip8::Chip8()
 
 void Chip8::cycle()
 {
+    if (!running)
+        return;
     uint16_t ins = (ram[position.get()] << 8) |
                    ram[position.get() + 1];
     uint8_t mask = (ram[position.get()] >> 4) & 0xF;
-    fmt::print("MASK: {}\n", mask);
-    fmt::print("INSTRUCTION: {}\n", ins);
-    fmt::print("INSTRUCTION 1: {}\n", ram[position.get() + 1]);
+    try
+    {
+        switch (mask)
+        {
+        case 0:
+            SYS_opcode(*this, ins);
+            break;
+        case 1:
+            JMP_opcode(*this, ins);
+            break;
+        case 2:
+            CALL_opcode(*this, ins);
+            break;
+        case 3:
+            SE_opcode(*this, ins);
+            break;
+        case 4:
+            SNE_opcode(*this, ins);
+            break;
+        case 5:
+            SE_R_opcode(*this, ins);
+            break;
+        case 6:
+            LD_opcode(*this, ins);
+            break;
+        case 7:
+            ADD_opcode(*this, ins);
+            break;
+        case 8:
+            REG_opcode(*this, ins);
+            break;
+        case 9:
+            SNE_R_opcode(*this, ins);
+            break;
+        case 0xA:
+            LD_NNN_opcode(*this, ins);
+            break;
+        case 0xB:
+            JMP_R_opcode(*this, ins);
+            break;
+        case 0xC:
+            RND_opcode(*this, ins);
+            break;
+        case 0xD:
+            DRW_opcode(*this, ins);
+            break;
+        case 0xE:
+            SKP_K_opcode(*this, ins);
+            break;
+        case 0xF:
+            LD_T_opcode(*this, ins);
+            break;
+        }
+        this->position.step();
+    }
+    catch (std::runtime_error e)
+    {
+        running = false;
+    }
 }
 
 void Chip8::load(std::vector<uint8_t> &program)
@@ -365,4 +413,20 @@ void Chip8::load(std::vector<uint8_t> &program)
     {
         ram[PRG_RAM_OFFSET + i] = program[i];
     }
+    running = true;
+}
+
+void Chip8::timer(uint64_t millis)
+{
+    if (oldMillis)
+    {
+        uint64_t dif = millis - oldMillis + remMillis;
+        auto frames = dif / FRAME_MILLIS;
+        remMillis = dif % FRAME_MILLIS;
+        if (dt)
+            dt = std::max(0UL, dt - frames);
+        if (st)
+            st = std::max(0UL, st - frames);
+    }
+    oldMillis = millis;
 }

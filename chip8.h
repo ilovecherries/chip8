@@ -3,110 +3,8 @@
 #include <array>
 #include <vector>
 #include <cstdint>
-
-class Chip8;
-
-class Opcode
-{
-public:
-    virtual void opcode(Chip8 &chip8, uint16_t ins) = 0;
-};
-
-class SYS_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class JMP_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class CALL_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class SE_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class SNE_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class SE_R_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class LD_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class ADD_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class REG_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class SNE_R_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class LD_NNN_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class JMP_R_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class RND_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class DRW_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class SKP_K_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
-
-class LD_T_Opcode : public Opcode
-{
-public:
-    void opcode(Chip8 &chip8, uint16_t ins);
-};
+#include <memory>
+#include <fmt/format.h>
 
 constexpr std::size_t DISPLAY_WIDTH = 64;
 constexpr std::size_t DISPLAY_HEIGHT = 32;
@@ -164,26 +62,33 @@ public:
     uint16_t get();
     uint16_t pop();
     void step();
+    void back();
 };
 
 typedef std::array<std::array<bool, DISPLAY_WIDTH>, DISPLAY_HEIGHT> Chip8Display;
 
+constexpr uint64_t FRAME_MILLIS = 1000 / 60;
+
 class Chip8
 {
+    uint64_t oldMillis;
+    uint64_t remMillis;
+
 public:
     PositionStack position;
     std::array<uint8_t, REGISTER_COUNT> registers;
     Chip8Display vram;
     std::array<uint8_t, RAM_SIZE> ram;
     std::array<bool, KEYBOARD_SIZE> keyboard;
-    std::array<std::unique_ptr<Opcode>, OPCODES> opcodes;
     // delta timer
     uint8_t dt;
     // sound timer
     uint8_t st;
     uint16_t i;
+    bool running;
 
     Chip8();
     void cycle();
     void load(std::vector<uint8_t> &);
+    void timer(uint64_t millis);
 };
