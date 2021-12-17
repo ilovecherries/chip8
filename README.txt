@@ -1,6 +1,6 @@
 CHIP-8 INTERPRETER
 =====
-Written by Cherry (ilovecherries@protonmail.com)
+Written by Cherry (cherry@epochal.quest)
 
 it's written using C++17 and Xlib, so i guess have a compiler and xorg on your
 computer. it should probably be easy to port to other systems?
